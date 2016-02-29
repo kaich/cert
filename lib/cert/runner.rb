@@ -33,42 +33,9 @@ module Cert
       end
 
       return unless should_create
-
-      if create_certificate # no certificate here, creating a new one
-        return # success
-      else
-        UI.user_error!("Something went wrong when trying to create a new certificate...")
-      end
+      
     end
 
-    # Command method for the :revoke_expired sub-command
-    def revoke_expired_certs!
-      FastlaneCore::PrintTable.print_values(config: Cert.config, hide_keys: [:output_path], title: "Summary for cert #{Cert::VERSION}")
-
-      login
-
-      to_revoke = expired_certs
-
-      if to_revoke.empty?
-        UI.success "No expired certificates were found to revoke! 👍"
-        return
-      end
-
-      revoke_count = 0
-
-      to_revoke.each do |certificate|
-        begin
-          UI.message "#{certificate.id} #{certificate.name} has expired, revoking..."
-          certificate.revoke!
-          revoke_count += 1
-        rescue => e
-          UI.error "An error occurred while revoking #{certificate.id} #{certificate.name}"
-          UI.error "#{e.message}\n#{e.backtrace.join("\n")}" if $verbose
-        end
-      end
-
-      UI.success "#{revoke_count} expired certificate#{'s' if revoke_count != 1} #{revoke_count == 1 ? 'has' : 'have'} been revoked! 👍"
-    end
 
     def expired_certs
       certificates.select do |certificate|
@@ -78,12 +45,12 @@ module Cert
 
     def find_existing_cert
       certificates.each do |certificate|
+        puts "++++++++++++check #{certificate}"
         unless certificate.can_download
           next
         end
 
         path = store_certificate(certificate)
-        private_key_path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.p12"))
 
         if FastlaneCore::CertChecker.installed?(path)
           # This certificate is installed on the local machine
@@ -128,46 +95,10 @@ module Cert
       cert_type
     end
 
-    def create_certificate
-      # Create a new certificate signing request
-      csr, pkey = Spaceship.certificate.create_certificate_signing_request
-
-      # Use the signing request to create a new distribution certificate
-      begin
-        certificate = certificate_type.create!(csr: csr)
-      rescue => ex
-        if ex.to_s.include?("You already have a current")
-          UI.user_error!("Could not create another certificate, reached the maximum number of available certificates.")
-        end
-
-        raise ex
-      end
-
-      # Store all that onto the filesystem
-
-      request_path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.certSigningRequest"))
-      File.write(request_path, csr.to_pem)
-
-      private_key_path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.p12"))
-      File.write(private_key_path, pkey)
-
-      cert_path = store_certificate(certificate)
-
-      # Import all the things into the Keychain
-      KeychainImporter.import_file(private_key_path)
-      KeychainImporter.import_file(cert_path)
-
-      # Environment variables for the fastlane action
-      ENV["CER_CERTIFICATE_ID"] = certificate.id
-      ENV["CER_FILE_PATH"] = cert_path
-
-      UI.success "Successfully generated #{certificate.id} which was imported to the local machine."
-
-      return cert_path
-    end
 
     def store_certificate(certificate)
       path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.cer"))
+      puts "----------------------------:#{path}"
       raw_data = certificate.download_raw
       File.write(path, raw_data)
       return path
