@@ -14,7 +14,7 @@ module Cert
 
     def login
       UI.message "Starting login with user '#{Cert.config[:username]}'"
-      Spaceship.login(Cert.config[:username], nil)
+      Spaceship.login(Cert.config[:username], Cert.config[:password])
       Spaceship.select_team
       UI.message "Successfully logged in"
     end
