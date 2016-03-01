@@ -45,7 +45,6 @@ module Cert
 
     def find_existing_cert
       certificates.each do |certificate|
-        puts "++++++++++++check #{certificate}"
         unless certificate.can_download
           next
         end
@@ -60,8 +59,7 @@ module Cert
           UI.success "Found the certificate #{certificate.id} (#{certificate.name}) which is installed on the local machine. Using this one."
 
           return path
-        elsif File.exist?(private_key_path)
-          KeychainImporter.import_file(private_key_path)
+        elsif File.exist?(path)
           KeychainImporter.import_file(path)
 
           ENV["CER_CERTIFICATE_ID"] = certificate.id
