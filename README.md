@@ -56,8 +56,9 @@ Get in contact with the developers on Twitter: [@FastlaneTools](https://twitter.
 # Installation
 
 **Note**: It is recommended to use [match](https://github.com/fastlane/match) according to the [codesigning.guide](https://codesigning.guide) for generating and maintaining your certificates. Use `cert` directly only if you want full control over what's going on and know more about codesigning.
-
-     gem specific_install https://github.com/kaich/cert.git
+	
+	gem install specific_install
+    gem specific_install https://github.com/kaich/cert.git
 
 Make sure, you have the latest version of the Xcode command line tools installed:
 
