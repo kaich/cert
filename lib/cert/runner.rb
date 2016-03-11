@@ -33,9 +33,53 @@ module Cert
       end
 
       return unless should_create
+
+      if create_certificate # no certificate here, creating a new one
+        return # success
+      else
+        UI.user_error!("Something went wrong when trying to create a new certificate...")
+      end
       
     end
 
+
+    def create_certificate
+      # Create a new certificate signing request
+      csr, pkey = Spaceship.certificate.create_certificate_signing_request
+
+      # Use the signing request to create a new distribution certificate
+      begin
+        certificate = certificate_type.create!(csr: csr)
+      rescue => ex
+        if ex.to_s.include?("You already have a current")
+          UI.user_error!("Could not create another certificate, reached the maximum number of available certificates.")
+        end
+
+        raise ex
+      end
+
+      # Store all that onto the filesystem
+
+      request_path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.certSigningRequest"))
+      File.write(request_path, csr.to_pem)
+
+      private_key_path = File.expand_path(File.join(Cert.config[:output_path], "#{certificate.id}.p12"))
+      File.write(private_key_path, pkey)
+
+      cert_path = store_certificate(certificate)
+
+      # Import all the things into the Keychain
+      KeychainImporter.import_file(private_key_path)
+      KeychainImporter.import_file(cert_path)
+
+      # Environment variables for the fastlane action
+      ENV["CER_CERTIFICATE_ID"] = certificate.id
+      ENV["CER_FILE_PATH"] = cert_path
+
+      UI.success "Successfully generated #{certificate.id} which was imported to the local machine."
+
+      return cert_path
+    end
 
     def expired_certs
       certificates.select do |certificate|
@@ -103,3 +147,4 @@ module Cert
     end
   end
 end
+
